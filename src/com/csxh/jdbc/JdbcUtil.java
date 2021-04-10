@@ -1,8 +1,8 @@
 package com.csxh.jdbc;
 
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 import org.apache.log4j.Logger;
@@ -23,7 +23,8 @@ public class JdbcUtil {
 		try {
 			//1、使用PropertY类读取jdbc的配置参数
 			Properties p=new Properties();
-			p.load(new FileReader("jdbc.properties") );
+			InputStream in=JdbcUtil.class.getClassLoader().getResourceAsStream("/jdbc.properties");
+			p.load(in);
 			JdbcUtil.url=p.getProperty("url");
 			JdbcUtil.user=p.getProperty("user");
 			JdbcUtil.password=p.getProperty("password");
