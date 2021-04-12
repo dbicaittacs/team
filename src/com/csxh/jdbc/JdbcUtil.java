@@ -3,6 +3,9 @@ package com.csxh.jdbc;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -272,6 +275,128 @@ public class JdbcUtil {
 
 	}
 
+	//使用面向对象的方法操作数据库
+    //数据表的名称与类的名称一致（首字符大写）
+    //表中各个字段名称与类对象的getXxx(setXxx)中的Xxx名称一致(首字符小写)
+	@SuppressWarnings("unchecked")
+	public static <T> List<T> findList(Class<?> clazz,Object...args){
+		List<T> retList=new ArrayList<T>();
+		
+		//从类名称获取表的名称
+		char[] chs=clazz.getSimpleName().toCharArray();
+		chs[0]=Character.toLowerCase(chs[0]);
+		String table=new String(chs);
+		//获取表的各个字段名称
+		List<Method>setMethodList=new ArrayList<Method>();
+		List<String>fieldList=new ArrayList<String>();
+		List<Class<?>>fieldTypeList=new ArrayList<Class<?>>();
+		Method[] methods=clazz.getMethods();
+		for(Method method:methods){
+			
+			if(method.getModifiers()==Modifier.PUBLIC && method.getName().startsWith("get")){
+				//提取getXxx中的Xxx部分
+				String _Xxx = method.getName().substring(3);
+				//判断是否有对象setXxx方法
+				String setXxx="set"+_Xxx;
+				
+				try {
+					Method m=clazz.getMethod(setXxx, method.getReturnType());
+					if(m==null){
+						continue;//忽略后面的代码，继续下一次循环
+					}
+					setMethodList.add(m);
+					
+				} catch (NoSuchMethodException e) {
+					log.error(e.getMessage());
+					continue;//忽略后面的代码，继续下一次循环
+				} catch (SecurityException e) {
+					// TODO Auto-generated catch block
+					log.error(e.getMessage());
+					continue;//忽略后面的代码，继续下一次循环
+				}
+				
+				chs=_Xxx.toCharArray();
+				
+				chs[0]=Character.toLowerCase(chs[0]);
+				String field=new String(chs);
+				
+				fieldList.add(field);
+				//获取返回值的类型信息
+				fieldTypeList.add(method.getReturnType());
+				
+			}
+		}
+		
+		//构建SELECT SQL语句
+		StringBuilder sb=new StringBuilder();
+		sb.append("SELECT ");
+		for(int i=0;i<fieldList.size();i++){
+			sb.append('`').append(fieldList.get(i)).append('`').append(",");
+		}
+		//去掉最后的逗号
+		sb=sb.delete(sb.length()-1, sb.length());
+		sb.append(" FROM ").append(table);
+		
+		log.debug(sb.toString());
+		//
+		
+		try {
+			JdbcUtil.conn=JdbcUtil.openConnection();
+		    JdbcUtil.pstmt=	JdbcUtil.conn.prepareStatement(sb.toString());
+		    for(int i=0;i<args.length;i++){
+		    	pstmt.setObject(i+1, args[i]);
+		    } 
+		    ResultSet rs=JdbcUtil.pstmt.executeQuery();
+		    while(rs.next()){
+		    	
+		    	//创建类的对象
+		    	T o=(T)clazz.newInstance();
+		    	for(int i=0;i<fieldList.size();i++){
+		    		String field=fieldList.get(i);
+		    		Class<?> fieldType=fieldTypeList.get(i);
+		    		
+		    		
+		    		//获取每记录中对应字段的值
+		    		Object value=null;
+		    		if(fieldType==String.class){		    			
+		    		   value=rs.getString(field);
+		    		}else if(fieldType==Integer.class){
+		    			value=rs.getInt(field);		    			
+		    		}else if(fieldType==Boolean.class){
+		    			value=rs.getBoolean(field);		    			
+		    		}
+		    		
+		    		//通过调用对象的setXxx方法为对象赋值
+		    		Method m=setMethodList.get(i);
+		    		m.invoke(o, value);
+		    		
+		    	}//end for
+		    	
+		    	//将对象加入返回列表中
+		    	retList.add(o);
+		    }
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InstantiationException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalAccessException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalArgumentException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			JdbcUtil.closeConnection();
+		}
+		
+		return retList;
+	}
+	
 	// 关闭已经打开的连接对象
 	public static void closeConnection() {
 

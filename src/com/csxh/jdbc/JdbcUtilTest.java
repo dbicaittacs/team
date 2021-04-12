@@ -6,6 +6,8 @@ import java.sql.Connection;
 import org.junit.Assert;
 import org.junit.Test;
 
+import com.csxh.bean.User;
+
 
 public class JdbcUtilTest {
 
@@ -42,6 +44,11 @@ public class JdbcUtilTest {
 		String sql="UPDATE `user` SET `username`='zzzz' , `password`='abcd' WHERE `id`=2";
 		boolean b=JdbcUtil.update(sql);
 		Assert.assertTrue(b);
+	}
+	@Test
+	public void testFindList() {
+		List<User>userList=JdbcUtil.findList(User.class);
+		Assert.assertTrue(userList.size()>0);
 	}
 
 }
