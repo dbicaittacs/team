@@ -28,5 +28,20 @@ public class JdbcUtilTest {
 		List<Object[]>list=JdbcUtil.findList(sql);
 		Assert.assertTrue(list.size()>0);
 	}
+	
+	@Test
+	public void testAdd() {
+		//占位符特指定值域
+		String sql="INSERT INTO `user` (`username`,`password`) VALUES ( ?, ?)";
+		Object[] args=new Object[]{"aaa","bbb"};
+		boolean b=JdbcUtil.add(sql,args);
+		Assert.assertTrue(b);
+	}
+	@Test
+	public void testUpdate() {
+		String sql="UPDATE `user` SET `username`='zzzz' , `password`='abcd' WHERE `id`=2";
+		boolean b=JdbcUtil.update(sql);
+		Assert.assertTrue(b);
+	}
 
 }

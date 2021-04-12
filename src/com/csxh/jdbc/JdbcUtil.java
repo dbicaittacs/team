@@ -1,11 +1,11 @@
 package com.csxh.jdbc;
 
 import java.io.FileNotFoundException;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -28,6 +28,7 @@ public class JdbcUtil {
 	private static String password;
 	private static Connection conn;
 	private static Statement stmt;
+	private static PreparedStatement pstmt;
 
 	static {
 		try {
@@ -101,14 +102,152 @@ public class JdbcUtil {
 
 	}
 
+	// 对数据库记录进行删除
+	public static boolean delete(String deleteSQL,Object...args) {
+
+		boolean fOk = false;
+		try {
+			JdbcUtil.conn = JdbcUtil.openConnection();
+
+			// 取消事务的自动提交事务功能
+			JdbcUtil.conn.setAutoCommit(false);
+
+			JdbcUtil.pstmt = JdbcUtil.conn.prepareStatement(deleteSQL);
+			for (int i = 0; i < args.length; i++) {
+				JdbcUtil.pstmt.setObject(i + 1, args[i]);
+			}
+			// JdbcUtil.stmt = JdbcUtil.conn.createStatement();
+
+			// int ret=JdbcUtil.stmt.executeUpdate(updateSQL);
+			int ret = JdbcUtil.pstmt.executeUpdate();
+
+			// JdbcUtil.stmt = JdbcUtil.conn.createStatement();
+
+			// int ret=JdbcUtil.stmt.executeUpdate(deleteSQL);
+			// 手动提交事务
+			JdbcUtil.conn.commit();
+
+			log.info("删除记录成功");
+
+			fOk = ret > 0;
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			try {
+				JdbcUtil.conn.rollback();
+				log.info("删除没有成功，回滚到删除之前的状态");
+			} catch (SQLException e1) {
+				log.error(e1.getMessage());
+			}
+			log.error(e.getMessage());
+		} finally {
+			JdbcUtil.closeConnection();
+		}
+
+		return fOk;
+	}
+
+	// 对数据库表的记录进行更新
+	public static boolean update(String updateSQL, Object... args) {
+		boolean fOk = false;
+		try {
+			JdbcUtil.conn = JdbcUtil.openConnection();
+
+			// 取消事务的自动提交事务功能
+			JdbcUtil.conn.setAutoCommit(false);
+
+			JdbcUtil.pstmt = JdbcUtil.conn.prepareStatement(updateSQL);
+			for (int i = 0; i < args.length; i++) {
+				JdbcUtil.pstmt.setObject(i + 1, args[i]);
+			}
+			// JdbcUtil.stmt = JdbcUtil.conn.createStatement();
+
+			// int ret=JdbcUtil.stmt.executeUpdate(updateSQL);
+			int ret = JdbcUtil.pstmt.executeUpdate();
+			// 手动提交事务
+			JdbcUtil.conn.commit();
+
+			log.info("更新记录成功");
+
+			fOk = ret > 0;
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			try {
+				JdbcUtil.conn.rollback();
+				log.info("更新没有成功，回滚到更新之前的状态");
+			} catch (SQLException e1) {
+				log.error(e1.getMessage());
+			}
+			log.error(e.getMessage());
+		} finally {
+
+			JdbcUtil.closeConnection();
+		}
+
+		return fOk;
+	}
+
+	// 向数据库表插入记录
+	// 在SQL语句以使用占位？
+	public static boolean add(String insertSQL, Object... args) {
+
+		boolean fOk = false;
+
+		try {
+			JdbcUtil.conn = JdbcUtil.openConnection();
+
+			// 取消事务的自动提交事务功能
+			JdbcUtil.conn.setAutoCommit(false);
+
+			JdbcUtil.pstmt = JdbcUtil.conn.prepareStatement(insertSQL);// insert
+																		// into
+																		// user
+																		// (username,password)
+																		// values(?,?)
+			// JdbcUtil.stmt = JdbcUtil.conn.createStatement();
+			// 设置点位符对象的值
+			for (int i = 0; i < args.length; i++) {
+				JdbcUtil.pstmt.setObject(i + 1, args[i]);// 给第i+1个点位符设置值
+			}
+
+			int ret = JdbcUtil.pstmt.executeUpdate();// 使用预编译语句对象执行更新不能再给SQL参数
+			// 手动提交事务
+			JdbcUtil.conn.commit();
+
+			log.info("增加记录成功");
+
+			fOk = ret > 0;
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			try {
+				JdbcUtil.conn.rollback();
+				log.info("增加没有成功，回滚到增加之前的状态");
+			} catch (SQLException e1) {
+				log.error(e1.getMessage());
+			}
+			log.error(e.getMessage());
+		} finally {
+			JdbcUtil.closeConnection();
+		}
+
+		return fOk;
+	}
+
 	// 执行查询语句 select --->返回结果集--->列表集合
-	public static List<Object[]> findList(String selectSQL) {
+	public static List<Object[]> findList(String selectSQL,Object...args) {
 
 		List<Object[]> retList = new ArrayList<Object[]>();
 		try {
 			JdbcUtil.conn = JdbcUtil.openConnection();
-			JdbcUtil.stmt = JdbcUtil.conn.createStatement();
-			ResultSet rs = JdbcUtil.stmt.executeQuery(selectSQL);
+			//JdbcUtil.stmt = JdbcUtil.conn.createStatement();
+			//ResultSet rs = JdbcUtil.stmt.executeQuery(selectSQL);
+			JdbcUtil.pstmt=JdbcUtil.conn.prepareStatement(selectSQL);
+			for (int i = 0; i < args.length; i++) {
+				JdbcUtil.pstmt.setObject(i + 1, args[i]);// 给第i+1个点位符设置值
+			}
+			ResultSet rs = JdbcUtil.pstmt.executeQuery();
 			log.info("获取查询的结果集");
 			// 获取结果集的列数（字段数）
 			int columnCount = rs.getMetaData().getColumnCount();
@@ -137,6 +276,15 @@ public class JdbcUtil {
 	public static void closeConnection() {
 
 		// 首先关闭语句对象
+		if (JdbcUtil.pstmt != null) {
+			try {
+				JdbcUtil.pstmt.close();
+				JdbcUtil.pstmt = null;// 已经关闭标志
+			} catch (SQLException e) {
+				log.error(e.getMessage());
+			}
+		}
+
 		if (JdbcUtil.stmt != null) {
 			try {
 				JdbcUtil.stmt.close();
@@ -149,6 +297,8 @@ public class JdbcUtil {
 		// 再关闭连接对象
 		if (JdbcUtil.conn != null) {
 			try {
+				// 设置为自动事务提交
+				JdbcUtil.conn.setAutoCommit(true);
 				JdbcUtil.conn.close();
 				JdbcUtil.conn = null;// 清空，以便标志下一次需要创建新连接对象
 			} catch (SQLException e) {
@@ -156,6 +306,5 @@ public class JdbcUtil {
 			}
 		}
 	}
-
 
 }
