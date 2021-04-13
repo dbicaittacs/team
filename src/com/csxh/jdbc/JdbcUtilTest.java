@@ -40,6 +40,13 @@ public class JdbcUtilTest {
 		Assert.assertTrue(b);
 	}
 	@Test
+	public void testAdd2() {
+		//占位符特指定值域
+		Object[] args=new Object[]{"aaa","bbb"};
+		boolean b=JdbcUtil.add(User.class,args);
+		Assert.assertTrue(b);
+	}
+	@Test
 	public void testUpdate() {
 		String sql="UPDATE `user` SET `username`='zzzz' , `password`='abcd' WHERE `id`=2";
 		boolean b=JdbcUtil.update(sql);

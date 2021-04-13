@@ -7,6 +7,7 @@ public class StringUtil {
 
 	/*
 	 * 对目标串中指定索引位的字符进行小写转换，返回转换后的新串
+	 * 如果不给参数:indexs，则将首字符转成小写
 	 */
 	public static String toLowerCaseAt(String target, int... indexs){
 		char[] chs=target.toCharArray();
@@ -23,7 +24,10 @@ public class StringUtil {
 		}
 		return new String(chs);
 	}
-	
+	/*
+	 * 对目标串中指定索引位的字符进行大写转换，返回转换后的新串
+	 * 如果不给参数:indexs，则将首字符转成大写
+	 */
 	public static String toUpperCaseAt(String target, int... indexs){
 		char[] chs=target.toCharArray();
 		if(indexs.length==0){

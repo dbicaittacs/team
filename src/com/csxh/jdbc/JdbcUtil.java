@@ -3,9 +3,7 @@ package com.csxh.jdbc;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -277,10 +275,37 @@ public class JdbcUtil {
 
 	}
 
-	//定义增加的ORM方法
+	
+	
+	//定义增加的ORM方法：约定表主键字段=id
 	public static boolean add(Class<?>clazz,Object...args){
 		
 		boolean fOk=false;
+		
+		String table=ReflectUtil.getTableName(clazz);
+		List<String> fieldList=ReflectUtil.getTableFieldList(clazz);
+		//构建Insert SQL语句
+		StringBuilder sb=new StringBuilder();
+		sb.append("INSERT INTO `").append(table).append("` ( ");
+		int count=0;
+		for(int i=0;i<fieldList.size();i++){
+			String field=fieldList.get(i);
+			if(field.equals("id")){//排除表的主键字段
+				continue;
+			}
+			sb.append("`").append(field).append("`,");
+			count++;
+		}
+		sb.delete(sb.length()-1, sb.length());
+		sb.append(") VALUES ( ");
+		for(int i=0;i<count;i++){
+			sb.append("?").append(",");
+		}
+		sb.delete(sb.length()-1, sb.length());
+		sb.append(" )");
+		log.info("构建了SQL语句："+sb.toString());
+		
+		fOk=JdbcUtil.add(sb.toString(), args);
 		
 		return fOk;
 	}
@@ -295,7 +320,7 @@ public class JdbcUtil {
 		String table=ReflectUtil.getTableName(clazz);
 		
 		//获取表的各个字段名称
-		List<String>fieldList=ReflectUtil.getJavaBeanFieldList(clazz);
+		List<String>fieldList=ReflectUtil.getTableFieldList(clazz);
 		log.info("从反射类中提供表名、字段名及每一个字段对应的类型与set方法");
 		//构建SELECT SQL语句
 		StringBuilder sb=new StringBuilder();
@@ -325,7 +350,6 @@ public class JdbcUtil {
 		    	for(int i=0;i<fieldList.size();i++){
 		    		String field=fieldList.get(i);
 		    		Class<?> fieldType=ReflectUtil.getJavaBeanFieldType(clazz, field);
-		    		
 		    		
 		    		//获取每记录中对应字段的值
 		    		Object value=rs.getObject(field);

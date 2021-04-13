@@ -1,5 +1,6 @@
 package com.csxh.reflect;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -8,6 +9,7 @@ import java.util.List;
 import org.apache.log4j.Logger;
 
 import com.csxh.jdbc.JdbcUtil;
+import com.csxh.string.StringUtil;
 
 /*
  * 反射工具类，为ORM提供支持
@@ -20,14 +22,12 @@ public class ReflectUtil {
 	// 提供实体类对应的表名称
 	public static String getTableName(Class<?> clazz) {
 
-		char[] chs = clazz.getSimpleName().toCharArray();
-		chs[0] = Character.toLowerCase(chs[0]);
-		String table = new String(chs);
+		String table =StringUtil.toLowerCaseAt(clazz.getSimpleName());
 		return table;
 	}
 
 	// 提供实体类对应的字段名称列表
-	public static List<String> getJavaBeanFieldList(Class<?> clazz) {
+	public static List<String> getTableFieldList(Class<?> clazz) {
 
 		// 获取表的各个字段名称
 		char[] chs;
@@ -59,10 +59,7 @@ public class ReflectUtil {
 					continue;// 忽略后面的代码，继续下一次循环
 				}
 
-				chs = _Xxx.toCharArray();
-
-				chs[0] = Character.toLowerCase(chs[0]);
-				String field = new String(chs);
+				String field =StringUtil.toLowerCaseAt(_Xxx);
 
 				fieldList.add(field);
 				// 获取返回值的类型信息
@@ -75,16 +72,16 @@ public class ReflectUtil {
 
 	}
 
+	public static List<String> getJavaBeanFieldList(Class<?> clazz) {
+		return ReflectUtil.getTableFieldList(clazz);
+	}
+	
 	// 提供对应实体对象（符合JavaBean规范）属性的类型
 	public static Class<?> getJavaBeanFieldType(Class<?> clazz, String fieldName) {
 		
 		Method m = null;
 		
-		char[] chs=fieldName.toCharArray();
-		chs[0]=Character.toUpperCase(chs[0]);
-		fieldName=new String(chs);
-		
-		String getXxx = "get" + fieldName;
+		String getXxx = "get" + StringUtil.toUpperCaseAt(fieldName);
 		
 		try {
 			m = clazz.getMethod(getXxx);
@@ -101,9 +98,7 @@ public class ReflectUtil {
 
 		Method m = null;
 		
-		char[] chs=fieldName.toCharArray();
-		chs[0]=Character.toUpperCase(chs[0]);
-		fieldName=new String(chs);
+		fieldName=StringUtil.toUpperCaseAt(fieldName);
 		
 		String getXxx = "get" + fieldName;
 		String setXxx = "set" + fieldName;
@@ -116,6 +111,53 @@ public class ReflectUtil {
 			log.error(e.getMessage());
 		}
 		return m;
+	}
+	
+	// 提供对应属性的get方法
+	public static Method getJavaBeanGetMethod(Class<?> clazz, String fieldName) {
+		
+		Method m = null;
+		
+		fieldName=StringUtil.toUpperCaseAt(fieldName);
+		
+		String getXxx = "get" + fieldName;
+		try {
+			m = clazz.getMethod(getXxx);
+			return m;
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			log.error(e.getMessage());
+		}
+		return m;
+	}
+	
+	public static void setJavaBeanValue(Object javaBean,String name,Object value){
+		Method m=ReflectUtil.getJavaBeanSetMethod(javaBean.getClass(), name);
+		if(m!=null){
+			try {
+				m.invoke(javaBean, value);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				log.error(e.getMessage());
+			}
+		}
+	}
+
+	public static Object getJavaBeanValue(Object javaBean,String name){
+		
+		Method m=ReflectUtil.getJavaBeanGetMethod(javaBean.getClass(), name);
+		
+		if(m!=null){
+			try {
+				return m.invoke(javaBean);
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				log.error(e.getMessage());
+			}
+		}
+		
+		return null;
+		
 	}
 
 }
