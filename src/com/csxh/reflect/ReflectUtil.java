@@ -79,7 +79,13 @@ public class ReflectUtil {
 	public static Class<?> getJavaBeanFieldType(Class<?> clazz, String fieldName) {
 		
 		Method m = null;
+		
+		char[] chs=fieldName.toCharArray();
+		chs[0]=Character.toUpperCase(chs[0]);
+		fieldName=new String(chs);
+		
 		String getXxx = "get" + fieldName;
+		
 		try {
 			m = clazz.getMethod(getXxx);
 			return m.getReturnType();
@@ -94,6 +100,11 @@ public class ReflectUtil {
 	public static Method getJavaBeanSetMethod(Class<?> clazz, String fieldName) {
 
 		Method m = null;
+		
+		char[] chs=fieldName.toCharArray();
+		chs[0]=Character.toUpperCase(chs[0]);
+		fieldName=new String(chs);
+		
 		String getXxx = "get" + fieldName;
 		String setXxx = "set" + fieldName;
 		try {
