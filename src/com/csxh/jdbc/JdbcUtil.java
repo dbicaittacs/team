@@ -18,6 +18,8 @@ import java.util.Properties;
 
 import org.apache.log4j.Logger;
 
+import com.csxh.reflect.ReflectUtil;
+
 /*
  * Jdbc工具类的设计
  */
@@ -275,7 +277,14 @@ public class JdbcUtil {
 
 	}
 
-	//使用面向对象的方法操作数据库
+	//定义增加的ORM方法
+	public static boolean add(Class<?>clazz,Object...args){
+		
+		boolean fOk=false;
+		
+		return fOk;
+	}
+	//使用ORM面向对象的方法操作数据库
     //数据表的名称与类的名称一致（首字符大写）
     //表中各个字段名称与类对象的getXxx(setXxx)中的Xxx名称一致(首字符小写)
 	@SuppressWarnings("unchecked")
@@ -283,50 +292,11 @@ public class JdbcUtil {
 		List<T> retList=new ArrayList<T>();
 		
 		//从类名称获取表的名称
-		char[] chs=clazz.getSimpleName().toCharArray();
-		chs[0]=Character.toLowerCase(chs[0]);
-		String table=new String(chs);
-		//获取表的各个字段名称
-		List<Method>setMethodList=new ArrayList<Method>();
-		List<String>fieldList=new ArrayList<String>();
-		List<Class<?>>fieldTypeList=new ArrayList<Class<?>>();
-		Method[] methods=clazz.getMethods();
-		for(Method method:methods){
-			
-			if(method.getModifiers()==Modifier.PUBLIC && method.getName().startsWith("get")){
-				//提取getXxx中的Xxx部分
-				String _Xxx = method.getName().substring(3);
-				//判断是否有对象setXxx方法
-				String setXxx="set"+_Xxx;
-				
-				try {
-					Method m=clazz.getMethod(setXxx, method.getReturnType());
-					if(m==null){
-						continue;//忽略后面的代码，继续下一次循环
-					}
-					setMethodList.add(m);
-					
-				} catch (NoSuchMethodException e) {
-					log.error(e.getMessage());
-					continue;//忽略后面的代码，继续下一次循环
-				} catch (SecurityException e) {
-					// TODO Auto-generated catch block
-					log.error(e.getMessage());
-					continue;//忽略后面的代码，继续下一次循环
-				}
-				
-				chs=_Xxx.toCharArray();
-				
-				chs[0]=Character.toLowerCase(chs[0]);
-				String field=new String(chs);
-				
-				fieldList.add(field);
-				//获取返回值的类型信息
-				fieldTypeList.add(method.getReturnType());
-				
-			}
-		}
+		String table=ReflectUtil.getTableName(clazz);
 		
+		//获取表的各个字段名称
+		List<String>fieldList=ReflectUtil.getJavaBeanFieldList(clazz);
+		log.info("从反射类中提供表名、字段名及每一个字段对应的类型与set方法");
 		//构建SELECT SQL语句
 		StringBuilder sb=new StringBuilder();
 		sb.append("SELECT ");
@@ -337,7 +307,7 @@ public class JdbcUtil {
 		sb=sb.delete(sb.length()-1, sb.length());
 		sb.append(" FROM ").append(table);
 		
-		log.debug(sb.toString());
+		log.info("构建了SQL语句："+sb.toString());
 		//
 		
 		try {
@@ -347,17 +317,20 @@ public class JdbcUtil {
 		    	pstmt.setObject(i+1, args[i]);
 		    } 
 		    ResultSet rs=JdbcUtil.pstmt.executeQuery();
+		    log.info("获取查询结果集");
 		    while(rs.next()){
 		    	
 		    	//创建类的对象
 		    	T o=(T)clazz.newInstance();
 		    	for(int i=0;i<fieldList.size();i++){
 		    		String field=fieldList.get(i);
-		    		Class<?> fieldType=fieldTypeList.get(i);
+		    		Class<?> fieldType=ReflectUtil.getJavaBeanFieldType(clazz, field);
 		    		
 		    		
 		    		//获取每记录中对应字段的值
-		    		Object value=null;
+		    		Object value=rs.getObject(field);
+		    		
+		    		//获取Object的子对象
 		    		if(fieldType==String.class){		    			
 		    		   value=rs.getString(field);
 		    		}else if(fieldType==Integer.class){
@@ -367,7 +340,7 @@ public class JdbcUtil {
 		    		}
 		    		
 		    		//通过调用对象的setXxx方法为对象赋值
-		    		Method m=setMethodList.get(i);
+		    		Method m=ReflectUtil.getJavaBeanSetMethod(clazz, field);
 		    		m.invoke(o, value);
 		    		
 		    	}//end for
@@ -375,21 +348,10 @@ public class JdbcUtil {
 		    	//将对象加入返回列表中
 		    	retList.add(o);
 		    }
-		} catch (SQLException e) {
+		    log.info("获取查询的对象列表:"+retList);
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InstantiationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalAccessException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalArgumentException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			log.error(e.getMessage());
 		}finally{
 			JdbcUtil.closeConnection();
 		}
